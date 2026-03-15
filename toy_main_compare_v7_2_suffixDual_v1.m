@@ -155,10 +155,25 @@ if isfield(d,'bounds')
         tag, b.neg_violation, b.dso_c_max_violation, b.dso_d_max_violation, ...
         b.mg_c_max_violation, b.mg_d_max_violation, b.buy_max_violation);
 end
+if isfield(d,'derived')
+    x = d.derived;
+    fprintf(['[%s-feas-eval] derived checks: SESO imp_ch_neg=%.3g imp_dis_neg=%.3g imp_ch_max=%.3g imp_dis_max=%.3g, ' ...
+             'SESO soc_min=%.3g soc_max=%.3g terminal_delta=%.3g\n'], ...
+        tag, x.seso_imp_ch_neg_violation, x.seso_imp_dis_neg_violation, x.seso_imp_ch_max_violation, x.seso_imp_dis_max_violation, ...
+        x.seso_soc_min_violation, x.seso_soc_max_violation, x.seso_terminal_delta);
+    fprintf('[%s-feas-eval] derived checks: MG head_ch_neg=%.3g head_dis_neg=%.3g netreq_upper=%.3g netreq_lower=%.3g\n', ...
+        tag, x.mg_head_ch_neg_violation, x.mg_head_dis_neg_violation, x.mg_netreq_upper_violation, x.mg_netreq_lower_violation);
+end
 if isfield(d,'subproblem')
     s = d.subproblem;
     fprintf('[%s-feas-eval] subproblem status: DSO=%d(%s), SESO=%d(%s), MG=%d(%s)\n', ...
         tag, s.dso_status, s.dso_msg, s.seso_status, s.seso_msg, s.mg_status, s.mg_msg);
+    if isfield(s,'seso_no_terminal_status')
+        fprintf('[%s-feas-eval] SESO without terminal SOC: %d(%s)\n', tag, s.seso_no_terminal_status, s.seso_no_terminal_msg);
+    end
+    if isfield(s,'mg_no_terminal_status')
+        fprintf('[%s-feas-eval] MG without terminal SOC: %d(%s)\n', tag, s.mg_no_terminal_status, s.mg_no_terminal_msg);
+    end
 end
 end
 

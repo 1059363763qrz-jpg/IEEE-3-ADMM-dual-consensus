@@ -140,6 +140,7 @@ ops = toy_sdpsettings_v5(par);
 
 diag = struct();
 diag.bounds = struct();
+diag.derived = struct();
 diag.subproblem = struct();
 
 % -------- Bound checks --------
@@ -149,6 +150,35 @@ diag.bounds.mg_c_max_violation  = max(0, max(fixed.mg_c  - par.P_mg_lease_charge
 diag.bounds.mg_d_max_violation  = max(0, max(fixed.mg_d  - par.P_mg_lease_discharge_max));
 diag.bounds.buy_max_violation   = max(0, max(fixed.buy   - par.P_mg_buy_max));
 diag.bounds.neg_violation = max(0, -min([fixed.dso_c(:); fixed.dso_d(:); fixed.mg_c(:); fixed.mg_d(:); fixed.buy(:)]));
+
+% -------- Derived checks (often root cause) --------
+% SESO implied battery powers are fully determined by fixed exchanges:
+%   P_s_ch = dso_c - mg_c,  P_s_dis = dso_d - mg_d
+imp_s_ch  = fixed.dso_c - fixed.mg_c;
+imp_s_dis = fixed.dso_d - fixed.mg_d;
+diag.derived.seso_imp_ch_neg_violation = max(0, -min(imp_s_ch));
+diag.derived.seso_imp_dis_neg_violation = max(0, -min(imp_s_dis));
+diag.derived.seso_imp_ch_max_violation = max(0, max(imp_s_ch - par.seso.P_ch_max));
+diag.derived.seso_imp_dis_max_violation = max(0, max(imp_s_dis - par.seso.P_dis_max));
+
+E = zeros(1,T+1); E(1)=par.seso.E0;
+for tt=1:T
+    E(tt+1) = E(tt) + par.seso.eta_ch*imp_s_ch(tt) - (1/par.seso.eta_dis)*imp_s_dis(tt);
+end
+diag.derived.seso_soc_min_violation = max(0, -min(E));
+diag.derived.seso_soc_max_violation = max(0, max(E - par.seso.E_max));
+diag.derived.seso_terminal_delta = E(end) - par.seso.E0;
+
+% MG per-step net balance requirement for self battery:
+%   P_self_dis - P_self_ch = P_L - P_R - buy
+% Feasibility requires this net demand fits remaining self charge/discharge headroom.
+net_req = par.mg.P_L - par.mg.P_R - fixed.buy;
+head_ch  = par.mg.P_ch_max  - fixed.mg_c; % max P_self_ch
+head_dis = par.mg.P_dis_max - fixed.mg_d; % max P_self_dis
+diag.derived.mg_head_ch_neg_violation = max(0, -min(head_ch));
+diag.derived.mg_head_dis_neg_violation = max(0, -min(head_dis));
+diag.derived.mg_netreq_upper_violation = max(0, max(net_req - head_dis));
+diag.derived.mg_netreq_lower_violation = max(0, max((-net_req) - head_ch));
 
 % -------- DSO feasibility under fixed exchange --------
 P_grid = sdpvar(1,T); P_G = sdpvar(1,T);
@@ -177,6 +207,21 @@ sol_seso = optimize(C, 0, ops);
 diag.subproblem.seso_status = sol_seso.problem;
 diag.subproblem.seso_msg = yalmiperror(sol_seso.problem);
 
+% SESO check without terminal equality (to isolate end-SOC cause)
+if par.seso.Eend_eq_E0
+    C_relax = [P_s_ch>=0, P_s_dis>=0, E_s(1)==par.seso.E0];
+    for tt=1:T
+        C_relax=[C_relax, E_s(tt+1)==E_s(tt)+par.seso.eta_ch*P_s_ch(tt)-(1/par.seso.eta_dis)*P_s_dis(tt)];
+        C_relax=[C_relax, 0<=E_s(tt)<=par.seso.E_max, 0<=P_s_ch(tt)<=par.seso.P_ch_max, 0<=P_s_dis(tt)<=par.seso.P_dis_max];
+        C_relax=[C_relax, fixed.mg_c(tt)+P_s_ch(tt)==fixed.dso_c(tt)];
+        C_relax=[C_relax, fixed.mg_d(tt)+P_s_dis(tt)==fixed.dso_d(tt)];
+    end
+    C_relax=[C_relax, 0<=E_s(T+1)<=par.seso.E_max];
+    sol_seso_relax = optimize(C_relax, 0, ops);
+    diag.subproblem.seso_no_terminal_status = sol_seso_relax.problem;
+    diag.subproblem.seso_no_terminal_msg = yalmiperror(sol_seso_relax.problem);
+end
+
 % -------- MG feasibility under fixed lease/buy --------
 P_m_self_ch = sdpvar(1,T); P_m_self_dis = sdpvar(1,T); E_m = sdpvar(1,T+1);
 C=[P_m_self_ch>=0, P_m_self_dis>=0, E_m(1)==par.mg.E0];
@@ -195,4 +240,21 @@ end
 sol_mg = optimize(C, 0, ops);
 diag.subproblem.mg_status = sol_mg.problem;
 diag.subproblem.mg_msg = yalmiperror(sol_mg.problem);
+
+% MG check without terminal equality (to isolate end-SOC cause)
+if par.mg.Eend_eq_E0
+    C_relax=[P_m_self_ch>=0, P_m_self_dis>=0, E_m(1)==par.mg.E0];
+    for tt=1:T
+        C_relax=[C_relax, par.mg.P_R(tt)+P_m_self_dis(tt)+fixed.buy(tt) == par.mg.P_L(tt)+P_m_self_ch(tt)];
+        C_relax=[C_relax, 0<=P_m_self_ch(tt)+fixed.mg_c(tt)<=par.mg.P_ch_max];
+        C_relax=[C_relax, 0<=P_m_self_dis(tt)+fixed.mg_d(tt)<=par.mg.P_dis_max];
+        C_relax=[C_relax, E_m(tt+1)==E_m(tt)+par.mg.eta_ch*(P_m_self_ch(tt)+fixed.mg_c(tt)) ...
+                              -(1/par.mg.eta_dis)*(P_m_self_dis(tt)+fixed.mg_d(tt))];
+        C_relax=[C_relax, 0<=E_m(tt)<=par.mg.E_max];
+    end
+    C_relax=[C_relax, 0<=E_m(T+1)<=par.mg.E_max];
+    sol_mg_relax = optimize(C_relax, 0, ops);
+    diag.subproblem.mg_no_terminal_status = sol_mg_relax.problem;
+    diag.subproblem.mg_no_terminal_msg = yalmiperror(sol_mg_relax.problem);
+end
 end
