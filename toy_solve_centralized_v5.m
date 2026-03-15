@@ -58,7 +58,7 @@ if par.seso.Eend_eq_E0
         tol_end = par.alg.feas_terminal_tol;
     end
     if tol_end>0
-        C=[C, -tol_end <= E_s(T+1)-par.seso.E0 <= tol_end];
+        C=[C, E_s(T+1)-par.seso.E0 >= -tol_end, E_s(T+1)-par.seso.E0 <= tol_end];
     else
         C=[C, E_s(T+1)==par.seso.E0];
     end
@@ -86,7 +86,7 @@ if par.mg.Eend_eq_E0
         tol_end = par.alg.feas_terminal_tol;
     end
     if tol_end>0
-        C=[C, -tol_end <= E_m(T+1)-par.mg.E0 <= tol_end];
+        C=[C, E_m(T+1)-par.mg.E0 >= -tol_end, E_m(T+1)-par.mg.E0 <= tol_end];
     else
         C=[C, E_m(T+1)==par.mg.E0];
     end
@@ -107,9 +107,21 @@ if ~isempty(fixed)
             error('Missing fixed.%s in optional fixed exchange profile.', req{i});
         end
     end
-    C=[C, P_dso_charge == fixed.dso_c, P_dso_discharge == fixed.dso_d];
-    C=[C, P_m_lease_c  == fixed.mg_c,  P_m_lease_d  == fixed.mg_d];
-    C=[C, P_to_mg      == fixed.buy];
+    tol_fix = 0;
+    if isfield(par,'alg') && isfield(par.alg,'feas_fixed_tol')
+        tol_fix = par.alg.feas_fixed_tol;
+    end
+    if tol_fix>0
+        C=[C, P_dso_charge-fixed.dso_c >= -tol_fix, P_dso_charge-fixed.dso_c <= tol_fix];
+        C=[C, P_dso_discharge-fixed.dso_d >= -tol_fix, P_dso_discharge-fixed.dso_d <= tol_fix];
+        C=[C, P_m_lease_c-fixed.mg_c >= -tol_fix, P_m_lease_c-fixed.mg_c <= tol_fix];
+        C=[C, P_m_lease_d-fixed.mg_d >= -tol_fix, P_m_lease_d-fixed.mg_d <= tol_fix];
+        C=[C, P_to_mg-fixed.buy >= -tol_fix, P_to_mg-fixed.buy <= tol_fix];
+    else
+        C=[C, P_dso_charge == fixed.dso_c, P_dso_discharge == fixed.dso_d];
+        C=[C, P_m_lease_c  == fixed.mg_c,  P_m_lease_d  == fixed.mg_d];
+        C=[C, P_to_mg      == fixed.buy];
+    end
 end
 
 % Objective (Stage-1 style)

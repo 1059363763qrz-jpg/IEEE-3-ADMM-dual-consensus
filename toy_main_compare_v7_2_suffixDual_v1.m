@@ -22,6 +22,9 @@ fprintf('Dual params: alpha0=%.3g, eps=%.3g, step_clip=%.2f, burnin=%d, lam_clip
 if isfield(par.alg,'feas_terminal_tol')
     fprintf('Feasible re-eval: terminal SOC tolerance (fixed profile) = %.3g\n', par.alg.feas_terminal_tol);
 end
+if isfield(par.alg,'feas_fixed_tol')
+    fprintf('Feasible re-eval: fixed exchange matching tolerance = %.3g\n', par.alg.feas_fixed_tol);
+end
 
 fprintf('\n[1/4] Solving CENTRALIZED benchmark...\n');
 tic;

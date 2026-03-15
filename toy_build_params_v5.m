@@ -97,4 +97,5 @@ par.alg.adagrad_eps = 1e-3; % 防止极端步长
 par.alg.step_clip = 5.0;    % 步长上限
 par.alg.burnin = 100;       % 尾平均从第100次开始（你可以试 50/100/200）
 par.alg.feas_terminal_tol = 3e-2; % 可行性回灌评估时，终端SOC容差（仅 fixed 评估使用）
+par.alg.feas_fixed_tol = 1e-3;    % 可行性回灌评估时，fixed交换功率匹配容差
 end
