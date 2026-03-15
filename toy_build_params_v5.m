@@ -75,8 +75,8 @@ par.P_mg_lease_charge_max    = 1.2;
 par.P_mg_lease_discharge_max = 1.2;
 
 % --- Algorithm settings ---
-par.alg.max_iter = 1000;
-par.alg.tol_pri  = 5e-1;
+par.alg.max_iter = 500;
+par.alg.tol_pri  = 5e-3;
 par.alg.tol_dual = 5e-2;
 par.alg.print_every = 5;
 par.alg.max_walltime = 2400;
