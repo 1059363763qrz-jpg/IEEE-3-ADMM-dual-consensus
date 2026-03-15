@@ -121,7 +121,11 @@ Obj = J_dso + J_seso + J_mg;
 ops = toy_sdpsettings_v5(par);
 sol_feas = optimize(C, 0, ops);
 if sol_feas.problem~=0
-    warning('[Central-feas] status=%d (%s)', sol_feas.problem, yalmiperror(sol_feas.problem));
+    if isempty(fixed)
+        warning('[Central-feas] status=%d (%s)', sol_feas.problem, yalmiperror(sol_feas.problem));
+    else
+        warning('[Central-feas-fixed] status=%d (%s)', sol_feas.problem, yalmiperror(sol_feas.problem));
+    end
 end
 sol = optimize(C, Obj, ops);
 

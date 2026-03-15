@@ -74,6 +74,7 @@ S.admm_repair_status = nan;
 S.admm_repair_obj = nan;
 S.admm_repair_gap_final = nan;
 S.admm_repair_dev_l2 = nan;
+S.admm_gap_effective = nan;
 if admm_feas.status==0 && isfinite(admm_feas.obj)
     S.admm_feas_gap_final = (admm_feas.obj - cen.obj) ./ max(1e-9, abs(cen.obj));
 else
@@ -88,6 +89,10 @@ else
         S.admm_repair_gap_final = (admm_repair.obj - cen.obj) ./ max(1e-9, abs(cen.obj));
     end
 end
+S.admm_gap_effective = S.admm_feas_gap_final;
+if isnan(S.admm_gap_effective) && ~isnan(S.admm_repair_gap_final)
+    S.admm_gap_effective = S.admm_repair_gap_final;
+end
 S.admm_comm = admm.comm.total_scalars;
 S.admm_r_end = admm.hist.r_pri(end);
 S.admm_rd_end = admm.hist.r_dual(end);
@@ -101,6 +106,7 @@ S.cons_repair_status = nan;
 S.cons_repair_obj = nan;
 S.cons_repair_gap_final = nan;
 S.cons_repair_dev_l2 = nan;
+S.cons_gap_effective = nan;
 if cons_feas.status==0 && isfinite(cons_feas.obj)
     S.cons_feas_gap_final = (cons_feas.obj - cen.obj) ./ max(1e-9, abs(cen.obj));
 else
@@ -114,6 +120,10 @@ else
     if cons_repair.status==0 && isfinite(cons_repair.obj)
         S.cons_repair_gap_final = (cons_repair.obj - cen.obj) ./ max(1e-9, abs(cen.obj));
     end
+end
+S.cons_gap_effective = S.cons_feas_gap_final;
+if isnan(S.cons_gap_effective) && ~isnan(S.cons_repair_gap_final)
+    S.cons_gap_effective = S.cons_repair_gap_final;
 end
 S.cons_comm = cons.comm.total_scalars;
 S.cons_r_end = cons.hist.r_pri(end);
@@ -129,13 +139,13 @@ S.dual_step_mean_end = dual.hist.step_mean(end);
 S.dual_step_max_end = dual.hist.step_max(end);
 
 fprintf('\n=== Summary ===\n');
-fprintf('ADMM: iter=%d, time=%.2fs, gap(raw)=%.4f%%, gap(feas)=%.4f%%, feas_status=%d, r_pri=%.3e, r_dual=%.3e, comm=%d\n', ...
-    S.admm_iter, S.admm_time, 100*S.admm_gap_final, 100*S.admm_feas_gap_final, S.admm_feas_status, S.admm_r_end, S.admm_rd_end, S.admm_comm);
+fprintf('ADMM: iter=%d, time=%.2fs, gap(raw)=%.4f%%, gap(feas)=%.4f%%, gap(eff)=%.4f%%, feas_status=%d, r_pri=%.3e, r_dual=%.3e, comm=%d\n', ...
+    S.admm_iter, S.admm_time, 100*S.admm_gap_final, 100*S.admm_feas_gap_final, 100*S.admm_gap_effective, S.admm_feas_status, S.admm_r_end, S.admm_rd_end, S.admm_comm);
 if ~isnan(S.admm_repair_status)
     fprintf('      repair: status=%d, gap(repair)=%.4f%%, dev_l2=%.3e\n', S.admm_repair_status, 100*S.admm_repair_gap_final, S.admm_repair_dev_l2);
 end
-fprintf('Cons: iter=%d, time=%.2fs, gap(raw)=%.4f%%, gap(feas)=%.4f%%, feas_status=%d, r_pri=%.3e, comm=%d\n', ...
-    S.cons_iter, S.cons_time, 100*S.cons_gap_final, 100*S.cons_feas_gap_final, S.cons_feas_status, S.cons_r_end, S.cons_comm);
+fprintf('Cons: iter=%d, time=%.2fs, gap(raw)=%.4f%%, gap(feas)=%.4f%%, gap(eff)=%.4f%%, feas_status=%d, r_pri=%.3e, comm=%d\n', ...
+    S.cons_iter, S.cons_time, 100*S.cons_gap_final, 100*S.cons_feas_gap_final, 100*S.cons_gap_effective, S.cons_feas_status, S.cons_r_end, S.cons_comm);
 if ~isnan(S.cons_repair_status)
     fprintf('      repair: status=%d, gap(repair)=%.4f%%, dev_l2=%.3e\n', S.cons_repair_status, 100*S.cons_repair_gap_final, S.cons_repair_dev_l2);
 end
@@ -162,13 +172,13 @@ save('ToyCaseV7_2_Report.mat','report');
 
 Tsum = table( ...
     S.central_obj, S.central_time, ...
-    S.admm_iter, S.admm_time, S.admm_gap_final, S.admm_feas_status, S.admm_feas_obj, S.admm_feas_gap_final, S.admm_repair_status, S.admm_repair_obj, S.admm_repair_gap_final, S.admm_repair_dev_l2, S.admm_r_end, S.admm_rd_end, S.admm_comm, ...
+    S.admm_iter, S.admm_time, S.admm_gap_final, S.admm_feas_status, S.admm_feas_obj, S.admm_feas_gap_final, S.admm_gap_effective, S.admm_repair_status, S.admm_repair_obj, S.admm_repair_gap_final, S.admm_repair_dev_l2, S.admm_r_end, S.admm_rd_end, S.admm_comm, ...
     S.dual_iter, S.dual_time, S.dual_r_last_end, S.dual_r_avg_end, S.dual_gap_end, S.dual_g_end, S.dual_step_mean_end, S.dual_step_max_end, S.dual_comm, ...
-    S.cons_iter, S.cons_time, S.cons_gap_final, S.cons_feas_status, S.cons_feas_obj, S.cons_feas_gap_final, S.cons_repair_status, S.cons_repair_obj, S.cons_repair_gap_final, S.cons_repair_dev_l2, S.cons_r_end, S.cons_comm, ...
+    S.cons_iter, S.cons_time, S.cons_gap_final, S.cons_feas_status, S.cons_feas_obj, S.cons_feas_gap_final, S.cons_gap_effective, S.cons_repair_status, S.cons_repair_obj, S.cons_repair_gap_final, S.cons_repair_dev_l2, S.cons_r_end, S.cons_comm, ...
     'VariableNames', {'central_obj','central_time', ...
-                      'admm_iter','admm_time','admm_gap_final','admm_feas_status','admm_feas_obj','admm_feas_gap_final','admm_repair_status','admm_repair_obj','admm_repair_gap_final','admm_repair_dev_l2','admm_r_pri_end','admm_r_dual_end','admm_comm', ...
+                      'admm_iter','admm_time','admm_gap_final','admm_feas_status','admm_feas_obj','admm_feas_gap_final','admm_gap_effective','admm_repair_status','admm_repair_obj','admm_repair_gap_final','admm_repair_dev_l2','admm_r_pri_end','admm_r_dual_end','admm_comm', ...
                       'dual_iter','dual_time','dual_r_last_end','dual_r_suffixavg_end','dual_dual_gap_end','dual_g_end','dual_step_mean_end','dual_step_max_end','dual_comm', ...
-                      'cons_iter','cons_time','cons_gap_final','cons_feas_status','cons_feas_obj','cons_feas_gap_final','cons_repair_status','cons_repair_obj','cons_repair_gap_final','cons_repair_dev_l2','cons_r_pri_end','cons_comm'});
+                      'cons_iter','cons_time','cons_gap_final','cons_feas_status','cons_feas_obj','cons_feas_gap_final','cons_gap_effective','cons_repair_status','cons_repair_obj','cons_repair_gap_final','cons_repair_dev_l2','cons_r_pri_end','cons_comm'});
 writetable(Tsum,'ToyCaseV7_2_Summary.csv');
 fprintf('[Saved] ToyCaseV7_2_Report.mat and ToyCaseV7_2_Summary.csv\n');
 end
