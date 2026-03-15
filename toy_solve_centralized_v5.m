@@ -1,5 +1,9 @@
-function res = toy_solve_centralized_v5(par)
+function res = toy_solve_centralized_v5(par, fixed)
 % Centralized benchmark solve for v5 (MG can buy from DSO)
+
+if nargin < 2
+    fixed = [];
+end
 
 T = par.T;
 
@@ -76,6 +80,21 @@ end
 C=[C, P_to_dso_c==P_dso_charge, P_to_dso_d==P_dso_discharge];
 C=[C, P_from_mg_c==P_m_lease_c, P_from_mg_d==P_m_lease_d];
 C=[C, P_to_mg==P_m_buy];
+
+% Optional: fix exchanged powers to a provided consensus profile.
+% This is useful for evaluating a globally feasible primal objective recovered
+% from distributed methods.
+if ~isempty(fixed)
+    req = {'dso_c','dso_d','mg_c','mg_d','buy'};
+    for i = 1:numel(req)
+        if ~isfield(fixed, req{i})
+            error('Missing fixed.%s in optional fixed exchange profile.', req{i});
+        end
+    end
+    C=[C, P_dso_charge == fixed.dso_c, P_dso_discharge == fixed.dso_d];
+    C=[C, P_m_lease_c  == fixed.mg_c,  P_m_lease_d  == fixed.mg_d];
+    C=[C, P_to_mg      == fixed.buy];
+end
 
 % Objective (Stage-1 style)
 J_dso  = sum(par.c_grid.*P_grid + par.c_gen*P_G);

@@ -88,7 +88,8 @@ end
 out=struct();
 out.method='ADMM';
 out.hist=hist;
-out.final=struct('dso',dso,'seso',seso,'mg',mg);
+out.final=struct('dso',dso,'seso',seso,'mg',mg, ...
+    'z',struct('dso_c',z_dso_c,'dso_d',z_dso_d,'mg_c',z_mg_c,'mg_d',z_mg_d,'buy',z_buy));
 out.comm.scalars_per_iter=5*T;
 out.comm.total_scalars=numel(hist.obj)*out.comm.scalars_per_iter;
 end
