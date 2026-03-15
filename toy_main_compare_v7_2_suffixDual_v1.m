@@ -14,11 +14,17 @@ if ~isfield(par.alg,'adagrad_eps'); par.alg.adagrad_eps = 1e-3; end
 if ~isfield(par.alg,'step_clip'); par.alg.step_clip = 5.0; end
 if ~isfield(par.alg,'burnin'); par.alg.burnin = 100; end
 if ~isfield(par.alg,'lambda_clip'); par.alg.lambda_clip = 200; end
+if ~isfield(par.alg,'dual_momentum'); par.alg.dual_momentum = 0.5; end
+if ~isfield(par.alg,'dual_restart_ratio'); par.alg.dual_restart_ratio = 1.05; end
+if ~isfield(par.alg,'dual_subgrad_clip'); par.alg.dual_subgrad_clip = 2.0; end
+if ~isfield(par.alg,'dual_suffix_weighted'); par.alg.dual_suffix_weighted = true; end
 
 fprintf('=== ToyCase v7.2 (SuffixAvg Dual): solver=%s, max_iter=%d, tol_pri=%.1e, wall=%.0fs ===\n', ...
     par.solver.name, par.alg.max_iter, par.alg.tol_pri, par.alg.max_walltime);
 fprintf('Dual params: alpha0=%.3g, eps=%.3g, step_clip=%.2f, burnin=%d, lam_clip=%.0f\n', ...
     par.alg.alpha0, par.alg.adagrad_eps, par.alg.step_clip, par.alg.burnin, par.alg.lambda_clip);
+fprintf('Dual accel: mom=%.2f, restart=%.2f, subgrad_clip=%.2f, weighted_suffix=%d\n', ...
+    par.alg.dual_momentum, par.alg.dual_restart_ratio, par.alg.dual_subgrad_clip, par.alg.dual_suffix_weighted);
 if isfield(par.alg,'feas_terminal_tol')
     fprintf('Feasible re-eval: terminal SOC tolerance (fixed profile) = %.3g\n', par.alg.feas_terminal_tol);
 end
