@@ -65,8 +65,15 @@ S.central_time = t_cen;
 S.admm_iter = numel(admm.hist.obj);
 S.admm_time = sum(admm.hist.time);
 S.admm_gap_final = gap_admm(end);
+S.admm_feas_status = admm_feas.status;
 S.admm_feas_obj = admm_feas.obj;
-S.admm_feas_gap_final = (admm_feas.obj - cen.obj) ./ max(1e-9, abs(cen.obj));
+if admm_feas.status==0 && isfinite(admm_feas.obj)
+    S.admm_feas_gap_final = (admm_feas.obj - cen.obj) ./ max(1e-9, abs(cen.obj));
+else
+    S.admm_feas_gap_final = nan;
+    warning('[ADMM-feas-eval] infeasible/failed (status=%d, msg=%s); set feas gap to NaN.', admm_feas.status, admm_feas.yalmiperror);
+    print_fixed_diagnosis('ADMM', admm_feas);
+end
 S.admm_comm = admm.comm.total_scalars;
 S.admm_r_end = admm.hist.r_pri(end);
 S.admm_rd_end = admm.hist.r_dual(end);
@@ -74,8 +81,15 @@ S.admm_rd_end = admm.hist.r_dual(end);
 S.cons_iter = numel(cons.hist.obj);
 S.cons_time = sum(cons.hist.time);
 S.cons_gap_final = gap_cons(end);
+S.cons_feas_status = cons_feas.status;
 S.cons_feas_obj = cons_feas.obj;
-S.cons_feas_gap_final = (cons_feas.obj - cen.obj) ./ max(1e-9, abs(cen.obj));
+if cons_feas.status==0 && isfinite(cons_feas.obj)
+    S.cons_feas_gap_final = (cons_feas.obj - cen.obj) ./ max(1e-9, abs(cen.obj));
+else
+    S.cons_feas_gap_final = nan;
+    warning('[CONS-feas-eval] infeasible/failed (status=%d, msg=%s); set feas gap to NaN.', cons_feas.status, cons_feas.yalmiperror);
+    print_fixed_diagnosis('CONS', cons_feas);
+end
 S.cons_comm = cons.comm.total_scalars;
 S.cons_r_end = cons.hist.r_pri(end);
 
@@ -90,10 +104,10 @@ S.dual_step_mean_end = dual.hist.step_mean(end);
 S.dual_step_max_end = dual.hist.step_max(end);
 
 fprintf('\n=== Summary ===\n');
-fprintf('ADMM: iter=%d, time=%.2fs, gap(raw)=%.4f%%, gap(feas)=%.4f%%, r_pri=%.3e, r_dual=%.3e, comm=%d\n', ...
-    S.admm_iter, S.admm_time, 100*S.admm_gap_final, 100*S.admm_feas_gap_final, S.admm_r_end, S.admm_rd_end, S.admm_comm);
-fprintf('Cons: iter=%d, time=%.2fs, gap(raw)=%.4f%%, gap(feas)=%.4f%%, r_pri=%.3e, comm=%d\n', ...
-    S.cons_iter, S.cons_time, 100*S.cons_gap_final, 100*S.cons_feas_gap_final, S.cons_r_end, S.cons_comm);
+fprintf('ADMM: iter=%d, time=%.2fs, gap(raw)=%.4f%%, gap(feas)=%.4f%%, feas_status=%d, r_pri=%.3e, r_dual=%.3e, comm=%d\n', ...
+    S.admm_iter, S.admm_time, 100*S.admm_gap_final, 100*S.admm_feas_gap_final, S.admm_feas_status, S.admm_r_end, S.admm_rd_end, S.admm_comm);
+fprintf('Cons: iter=%d, time=%.2fs, gap(raw)=%.4f%%, gap(feas)=%.4f%%, feas_status=%d, r_pri=%.3e, comm=%d\n', ...
+    S.cons_iter, S.cons_time, 100*S.cons_gap_final, 100*S.cons_feas_gap_final, S.cons_feas_status, S.cons_r_end, S.cons_comm);
 fprintf('Dual(SuffixAvg): iter=%d, time=%.2fs, r_last=%.3e, r_avg=%.3e, dual_gap=%.3g, g=%.3f, step_mean=%.2e, step_max=%.2e, comm=%d\n', ...
     S.dual_iter, S.dual_time, S.dual_r_last_end, S.dual_r_avg_end, S.dual_gap_end, S.dual_g_end, S.dual_step_mean_end, S.dual_step_max_end, S.dual_comm);
 
@@ -117,15 +131,35 @@ save('ToyCaseV7_2_Report.mat','report');
 
 Tsum = table( ...
     S.central_obj, S.central_time, ...
-    S.admm_iter, S.admm_time, S.admm_gap_final, S.admm_feas_obj, S.admm_feas_gap_final, S.admm_r_end, S.admm_rd_end, S.admm_comm, ...
+    S.admm_iter, S.admm_time, S.admm_gap_final, S.admm_feas_status, S.admm_feas_obj, S.admm_feas_gap_final, S.admm_r_end, S.admm_rd_end, S.admm_comm, ...
     S.dual_iter, S.dual_time, S.dual_r_last_end, S.dual_r_avg_end, S.dual_gap_end, S.dual_g_end, S.dual_step_mean_end, S.dual_step_max_end, S.dual_comm, ...
-    S.cons_iter, S.cons_time, S.cons_gap_final, S.cons_feas_obj, S.cons_feas_gap_final, S.cons_r_end, S.cons_comm, ...
+    S.cons_iter, S.cons_time, S.cons_gap_final, S.cons_feas_status, S.cons_feas_obj, S.cons_feas_gap_final, S.cons_r_end, S.cons_comm, ...
     'VariableNames', {'central_obj','central_time', ...
-                      'admm_iter','admm_time','admm_gap_final','admm_feas_obj','admm_feas_gap_final','admm_r_pri_end','admm_r_dual_end','admm_comm', ...
+                      'admm_iter','admm_time','admm_gap_final','admm_feas_status','admm_feas_obj','admm_feas_gap_final','admm_r_pri_end','admm_r_dual_end','admm_comm', ...
                       'dual_iter','dual_time','dual_r_last_end','dual_r_suffixavg_end','dual_dual_gap_end','dual_g_end','dual_step_mean_end','dual_step_max_end','dual_comm', ...
-                      'cons_iter','cons_time','cons_gap_final','cons_feas_obj','cons_feas_gap_final','cons_r_pri_end','cons_comm'});
+                      'cons_iter','cons_time','cons_gap_final','cons_feas_status','cons_feas_obj','cons_feas_gap_final','cons_r_pri_end','cons_comm'});
 writetable(Tsum,'ToyCaseV7_2_Summary.csv');
 fprintf('[Saved] ToyCaseV7_2_Report.mat and ToyCaseV7_2_Summary.csv\n');
+end
+
+function print_fixed_diagnosis(tag, res)
+if ~isfield(res, 'fixed_diagnosis') || isempty(res.fixed_diagnosis)
+    fprintf('[%s-feas-eval] no fixed_diagnosis available.\n', tag);
+    return;
+end
+d = res.fixed_diagnosis;
+if isfield(d,'bounds')
+    b = d.bounds;
+    fprintf(['[%s-feas-eval] bounds violation check: neg=%.3g, dso_c=%.3g, dso_d=%.3g, ' ...
+             'mg_c=%.3g, mg_d=%.3g, buy=%.3g\n'], ...
+        tag, b.neg_violation, b.dso_c_max_violation, b.dso_d_max_violation, ...
+        b.mg_c_max_violation, b.mg_d_max_violation, b.buy_max_violation);
+end
+if isfield(d,'subproblem')
+    s = d.subproblem;
+    fprintf('[%s-feas-eval] subproblem status: DSO=%d(%s), SESO=%d(%s), MG=%d(%s)\n', ...
+        tag, s.dso_status, s.dso_msg, s.seso_status, s.seso_msg, s.mg_status, s.mg_msg);
+end
 end
 
 function res = call_central_with_fixed_compat(par, fixed)
