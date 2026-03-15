@@ -52,8 +52,8 @@ admm_fix = struct('dso_c',admm.final.z.dso_c,'dso_d',admm.final.z.dso_d, ...
                   'mg_c',admm.final.z.mg_c,'mg_d',admm.final.z.mg_d,'buy',admm.final.z.buy);
 cons_fix = struct('dso_c',cons.final.z.dso_c,'dso_d',cons.final.z.dso_d, ...
                   'mg_c',cons.final.z.mg_c,'mg_d',cons.final.z.mg_d,'buy',cons.final.z.buy);
-admm_feas = toy_solve_centralized_v5(par, admm_fix);
-cons_feas = toy_solve_centralized_v5(par, cons_fix);
+admm_feas = call_central_with_fixed_compat(par, admm_fix);
+cons_feas = call_central_with_fixed_compat(par, cons_fix);
 
 gap_admm = (admm.hist.obj - cen.obj) ./ max(1e-9, abs(cen.obj));
 gap_cons = (cons.hist.obj - cen.obj) ./ max(1e-9, abs(cen.obj));
@@ -126,4 +126,25 @@ Tsum = table( ...
                       'cons_iter','cons_time','cons_gap_final','cons_feas_obj','cons_feas_gap_final','cons_r_pri_end','cons_comm'});
 writetable(Tsum,'ToyCaseV7_2_Summary.csv');
 fprintf('[Saved] ToyCaseV7_2_Report.mat and ToyCaseV7_2_Summary.csv\n');
+end
+
+function res = call_central_with_fixed_compat(par, fixed)
+% Compatibility wrapper:
+% - New signature: toy_solve_centralized_v5(par, fixed)
+% - Old signature: toy_solve_centralized_v5(par)
+%
+% Some environments keep older function versions on MATLAB path or in cache.
+% Fallback avoids runtime crash and emits a warning so users can clear path/cache.
+try
+    res = toy_solve_centralized_v5(par, fixed);
+catch ME
+    if contains(ME.message, '输入参数太多') || contains(ME.message, 'Too many input arguments')
+        warning(['toy_solve_centralized_v5 currently resolves to old 1-input version. ' ...
+                 'Falling back to toy_solve_centralized_v5(par). ' ...
+                 'Please clear cache/path (e.g., clear functions; rehash path; which -all toy_solve_centralized_v5).']);
+        res = toy_solve_centralized_v5(par);
+        return;
+    end
+    rethrow(ME);
+end
 end
