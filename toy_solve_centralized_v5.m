@@ -53,7 +53,15 @@ for tt=1:T
 end
 C=[C, 0<=E_s(T+1)<=par.seso.E_max];
 if par.seso.Eend_eq_E0
-    C=[C, E_s(T+1)==par.seso.E0];
+    tol_end = 0;
+    if ~isempty(fixed) && isfield(par,'alg') && isfield(par.alg,'feas_terminal_tol')
+        tol_end = par.alg.feas_terminal_tol;
+    end
+    if tol_end>0
+        C=[C, -tol_end <= E_s(T+1)-par.seso.E0 <= tol_end];
+    else
+        C=[C, E_s(T+1)==par.seso.E0];
+    end
 end
 
 % MG self-first + buy
@@ -73,7 +81,15 @@ for tt=1:T
 end
 C=[C, 0<=E_m(T+1)<=par.mg.E_max];
 if par.mg.Eend_eq_E0
-    C=[C, E_m(T+1)==par.mg.E0];
+    tol_end = 0;
+    if ~isempty(fixed) && isfield(par,'alg') && isfield(par.alg,'feas_terminal_tol')
+        tol_end = par.alg.feas_terminal_tol;
+    end
+    if tol_end>0
+        C=[C, -tol_end <= E_m(T+1)-par.mg.E0 <= tol_end];
+    else
+        C=[C, E_m(T+1)==par.mg.E0];
+    end
 end
 
 % Consensus equalities
