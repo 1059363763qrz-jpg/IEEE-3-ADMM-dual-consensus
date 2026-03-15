@@ -113,8 +113,86 @@ res=struct();
 res.sol=sol;
 res.status=sol.problem;
 res.yalmiperror=yalmiperror(sol.problem);
-res.obj=value(Obj);
-res.J=struct('dso',value(J_dso),'seso',value(J_seso),'mg',value(J_mg));
-res.P=struct('dso_c',value(P_dso_charge),'dso_d',value(P_dso_discharge), ...
-             'mg_c',value(P_m_lease_c),'mg_d',value(P_m_lease_d),'mg_buy',value(P_m_buy));
+res.feas_status=sol_feas.problem;
+res.feas_yalmiperror=yalmiperror(sol_feas.problem);
+res.fixed_diagnosis=[];
+if sol.problem==0
+    res.obj=value(Obj);
+    res.J=struct('dso',value(J_dso),'seso',value(J_seso),'mg',value(J_mg));
+    res.P=struct('dso_c',value(P_dso_charge),'dso_d',value(P_dso_discharge), ...
+                 'mg_c',value(P_m_lease_c),'mg_d',value(P_m_lease_d),'mg_buy',value(P_m_buy));
+else
+    % If solve failed/infeasible, keep outputs explicit to prevent misleading gap values.
+    res.obj=nan;
+    res.J=struct('dso',nan,'seso',nan,'mg',nan);
+    res.P=struct('dso_c',nan(1,T),'dso_d',nan(1,T), ...
+                 'mg_c',nan(1,T),'mg_d',nan(1,T),'mg_buy',nan(1,T));
+    if ~isempty(fixed)
+        res.fixed_diagnosis = diagnose_fixed_profile(par, fixed);
+    end
+end
+end
+
+function diag = diagnose_fixed_profile(par, fixed)
+% Diagnose why fixed exchange profile can be infeasible in centralized re-eval.
+T = par.T;
+ops = toy_sdpsettings_v5(par);
+
+diag = struct();
+diag.bounds = struct();
+diag.subproblem = struct();
+
+% -------- Bound checks --------
+diag.bounds.dso_c_max_violation = max(0, max(fixed.dso_c - par.P_dso_charge_max));
+diag.bounds.dso_d_max_violation = max(0, max(fixed.dso_d - par.P_dso_discharge_max));
+diag.bounds.mg_c_max_violation  = max(0, max(fixed.mg_c  - par.P_mg_lease_charge_max));
+diag.bounds.mg_d_max_violation  = max(0, max(fixed.mg_d  - par.P_mg_lease_discharge_max));
+diag.bounds.buy_max_violation   = max(0, max(fixed.buy   - par.P_mg_buy_max));
+diag.bounds.neg_violation = max(0, -min([fixed.dso_c(:); fixed.dso_d(:); fixed.mg_c(:); fixed.mg_d(:); fixed.buy(:)]));
+
+% -------- DSO feasibility under fixed exchange --------
+P_grid = sdpvar(1,T); P_G = sdpvar(1,T);
+C = [P_grid>=0, par.P_Gmin<=P_G<=par.P_Gmax];
+for tt=1:T
+    C=[C, P_grid(tt)+P_G(tt)+fixed.dso_d(tt)+par.P_R2(tt) == par.P_D2(tt)+par.P_D3(tt)+fixed.dso_c(tt)+fixed.buy(tt)];
+end
+sol_dso = optimize(C, 0, ops);
+diag.subproblem.dso_status = sol_dso.problem;
+diag.subproblem.dso_msg = yalmiperror(sol_dso.problem);
+
+% -------- SESO feasibility under fixed exchange --------
+P_s_ch = sdpvar(1,T); P_s_dis = sdpvar(1,T); E_s = sdpvar(1,T+1);
+C = [P_s_ch>=0, P_s_dis>=0, E_s(1)==par.seso.E0];
+for tt=1:T
+    C=[C, E_s(tt+1)==E_s(tt)+par.seso.eta_ch*P_s_ch(tt)-(1/par.seso.eta_dis)*P_s_dis(tt)];
+    C=[C, 0<=E_s(tt)<=par.seso.E_max, 0<=P_s_ch(tt)<=par.seso.P_ch_max, 0<=P_s_dis(tt)<=par.seso.P_dis_max];
+    C=[C, fixed.mg_c(tt)+P_s_ch(tt)==fixed.dso_c(tt)];
+    C=[C, fixed.mg_d(tt)+P_s_dis(tt)==fixed.dso_d(tt)];
+end
+C=[C, 0<=E_s(T+1)<=par.seso.E_max];
+if par.seso.Eend_eq_E0
+    C=[C, E_s(T+1)==par.seso.E0];
+end
+sol_seso = optimize(C, 0, ops);
+diag.subproblem.seso_status = sol_seso.problem;
+diag.subproblem.seso_msg = yalmiperror(sol_seso.problem);
+
+% -------- MG feasibility under fixed lease/buy --------
+P_m_self_ch = sdpvar(1,T); P_m_self_dis = sdpvar(1,T); E_m = sdpvar(1,T+1);
+C=[P_m_self_ch>=0, P_m_self_dis>=0, E_m(1)==par.mg.E0];
+for tt=1:T
+    C=[C, par.mg.P_R(tt)+P_m_self_dis(tt)+fixed.buy(tt) == par.mg.P_L(tt)+P_m_self_ch(tt)];
+    C=[C, 0<=P_m_self_ch(tt)+fixed.mg_c(tt)<=par.mg.P_ch_max];
+    C=[C, 0<=P_m_self_dis(tt)+fixed.mg_d(tt)<=par.mg.P_dis_max];
+    C=[C, E_m(tt+1)==E_m(tt)+par.mg.eta_ch*(P_m_self_ch(tt)+fixed.mg_c(tt)) ...
+                  -(1/par.mg.eta_dis)*(P_m_self_dis(tt)+fixed.mg_d(tt))];
+    C=[C, 0<=E_m(tt)<=par.mg.E_max];
+end
+C=[C, 0<=E_m(T+1)<=par.mg.E_max];
+if par.mg.Eend_eq_E0
+    C=[C, E_m(T+1)==par.mg.E0];
+end
+sol_mg = optimize(C, 0, ops);
+diag.subproblem.mg_status = sol_mg.problem;
+diag.subproblem.mg_msg = yalmiperror(sol_mg.problem);
 end
