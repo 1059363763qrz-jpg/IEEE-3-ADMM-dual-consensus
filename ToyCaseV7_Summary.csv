@@ -1,0 +1,2 @@
+central_obj,central_time,admm_iter,admm_time,admm_gap_final,admm_r_pri_end,admm_r_dual_end,admm_comm,dual_iter,dual_time,dual_r_last_end,dual_r_avg_end,dual_dual_gap_end,dual_g_end,dual_comm,cons_iter,cons_time,cons_gap_final,cons_r_pri_end,cons_comm
+71.9761130087364,1.3583222,368,1216.6409013,-0.00016224493594027,0.00381965401920044,0.000714964478901181,44160,1000,1304.401523,12.4127146412275,0.175885361723099,0.0022932900640256,71.8110509039263,120000,82,318.3329524,0.0205583601016807,0.00468311032470726,9840
