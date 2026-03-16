@@ -48,6 +48,8 @@ sclip = 2.0;
 if isfield(par.alg,'dual_subgrad_clip'); sclip = par.alg.dual_subgrad_clip; end
 weighted_suffix = true;
 if isfield(par.alg,'dual_suffix_weighted'); weighted_suffix = par.alg.dual_suffix_weighted; end
+polyak_blend = 0.35;
+if isfield(par.alg,'dual_polyak_blend'); polyak_blend = par.alg.dual_polyak_blend; end
 
 % momentum memory
 lam_prev_dso_c = lam_dso_c; lam_prev_dso_d = lam_dso_d;
@@ -121,6 +123,18 @@ for k=1:K
     step_mg_c  = min(step_clip, alpha0 ./ (sqrt(G_mg_c)  + eps0));
     step_mg_d  = min(step_clip, alpha0 ./ (sqrt(G_mg_d)  + eps0));
     step_buy   = min(step_clip, alpha0 ./ (sqrt(G_buy)   + eps0));
+
+    % Optional Polyak-style scalar step blended with AdaGrad (still pure dual).
+    if ~isempty(primal_ub) && primal_ub>0 && polyak_blend>0
+        denom = sum(s_dso_c.^2) + sum(s_dso_d.^2) + sum(s_mg_c.^2) + sum(s_mg_d.^2) + sum(s_buy.^2);
+        alpha_poly = max(0, (primal_ub - g) / max(1e-9, denom));
+        alpha_poly = min(step_clip, alpha_poly);
+        step_dso_c = (1-polyak_blend)*step_dso_c + polyak_blend*alpha_poly;
+        step_dso_d = (1-polyak_blend)*step_dso_d + polyak_blend*alpha_poly;
+        step_mg_c  = (1-polyak_blend)*step_mg_c  + polyak_blend*alpha_poly;
+        step_mg_d  = (1-polyak_blend)*step_mg_d  + polyak_blend*alpha_poly;
+        step_buy   = (1-polyak_blend)*step_buy   + polyak_blend*alpha_poly;
+    end
 
     % update multipliers
     mom_eff = mom;

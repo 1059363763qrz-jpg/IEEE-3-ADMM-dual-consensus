@@ -96,10 +96,11 @@ par.alg.alpha0 = 0.05;      % Dual base step
 par.alg.adagrad_eps = 1e-3; % 防止极端步长
 par.alg.step_clip = 5.0;    % 步长上限
 par.alg.burnin = 100;       % 尾平均从第100次开始（你可以试 50/100/200）
-par.alg.dual_momentum = 0.5;          % 对偶动量（Heavy-ball）
-par.alg.dual_restart_ratio = 1.05;    % 若残差恶化超过该比例则重启动量
-par.alg.dual_subgrad_clip = 2.0;      % 子梯度逐元素裁剪，抑制抖动
-par.alg.dual_suffix_weighted = true;  % 尾平均使用递增权重（更重视后期）
+par.alg.dual_momentum = 0.15;         % 对偶动量（Heavy-ball，保守默认）
+par.alg.dual_restart_ratio = 1.01;    % 残差轻微恶化即重启动量
+par.alg.dual_subgrad_clip = 1e6;      % 默认几乎不裁剪（接近原版）
+par.alg.dual_suffix_weighted = false; % 默认使用原版等权尾平均
+par.alg.dual_polyak_blend = 0.35;     % AdaGrad与Polyak步长混合系数 [0,1]
 par.alg.feas_terminal_tol = 3e-2; % 可行性回灌评估时，终端SOC容差（仅 fixed 评估使用）
 par.alg.feas_fixed_tol = 1e-3;    % 可行性回灌评估时，fixed交换功率匹配容差
 end
