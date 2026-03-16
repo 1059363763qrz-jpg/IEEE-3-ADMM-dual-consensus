@@ -158,18 +158,6 @@ for k=1:K
         step_buy   = (1-polyak_blend)*step_buy   + polyak_blend*alpha_poly;
     end
 
-    % Optional Polyak-style scalar step blended with AdaGrad (still pure dual).
-    if ~isempty(primal_ub) && primal_ub>0 && polyak_blend>0
-        denom = sum(s_dso_c.^2) + sum(s_dso_d.^2) + sum(s_mg_c.^2) + sum(s_mg_d.^2) + sum(s_buy.^2);
-        alpha_poly = max(0, (primal_ub - g) / max(1e-9, denom));
-        alpha_poly = min(step_clip, alpha_poly);
-        step_dso_c = (1-polyak_blend)*step_dso_c + polyak_blend*alpha_poly;
-        step_dso_d = (1-polyak_blend)*step_dso_d + polyak_blend*alpha_poly;
-        step_mg_c  = (1-polyak_blend)*step_mg_c  + polyak_blend*alpha_poly;
-        step_mg_d  = (1-polyak_blend)*step_mg_d  + polyak_blend*alpha_poly;
-        step_buy   = (1-polyak_blend)*step_buy   + polyak_blend*alpha_poly;
-    end
-
     % update multipliers
     mom_eff = mom;
     if k>1 && r_last > restart_ratio*r_prev
