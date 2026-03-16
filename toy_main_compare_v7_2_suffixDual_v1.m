@@ -19,13 +19,22 @@ if ~isfield(par.alg,'dual_restart_ratio'); par.alg.dual_restart_ratio = 1.01; en
 if ~isfield(par.alg,'dual_subgrad_clip'); par.alg.dual_subgrad_clip = 1e6; end
 if ~isfield(par.alg,'dual_suffix_weighted'); par.alg.dual_suffix_weighted = false; end
 if ~isfield(par.alg,'dual_polyak_blend'); par.alg.dual_polyak_blend = 0.35; end
+if ~isfield(par.alg,'dual_decay_power'); par.alg.dual_decay_power = 0.25; end
+if ~isfield(par.alg,'dual_decay_warmup'); par.alg.dual_decay_warmup = 50; end
+if ~isfield(par.alg,'dual_auto_shrink'); par.alg.dual_auto_shrink = true; end
+if ~isfield(par.alg,'dual_patience'); par.alg.dual_patience = 30; end
+if ~isfield(par.alg,'dual_shrink'); par.alg.dual_shrink = 0.7; end
+if ~isfield(par.alg,'dual_min_scale'); par.alg.dual_min_scale = 0.05; end
 
 fprintf('=== ToyCase v7.2 (SuffixAvg Dual): solver=%s, max_iter=%d, tol_pri=%.1e, wall=%.0fs ===\n', ...
     par.solver.name, par.alg.max_iter, par.alg.tol_pri, par.alg.max_walltime);
 fprintf('Dual params: alpha0=%.3g, eps=%.3g, step_clip=%.2f, burnin=%d, lam_clip=%.0f\n', ...
     par.alg.alpha0, par.alg.adagrad_eps, par.alg.step_clip, par.alg.burnin, par.alg.lambda_clip);
-fprintf('Dual accel: mom=%.2f, restart=%.2f, subgrad_clip=%.2f, weighted_suffix=%d, polyak_blend=%.2f\n', ...
-    par.alg.dual_momentum, par.alg.dual_restart_ratio, par.alg.dual_subgrad_clip, par.alg.dual_suffix_weighted, par.alg.dual_polyak_blend);
+fprintf('Dual accel: mom=%.2f, restart=%.2f, subgrad_clip=%.2f, weighted_suffix=%d, polyak_blend=%.2f, decay_p=%.2f, decay_warmup=%d\n', ...
+    par.alg.dual_momentum, par.alg.dual_restart_ratio, par.alg.dual_subgrad_clip, par.alg.dual_suffix_weighted, ...
+    par.alg.dual_polyak_blend, par.alg.dual_decay_power, par.alg.dual_decay_warmup);
+fprintf('Dual auto-shrink: on=%d, patience=%d, shrink=%.2f, min_scale=%.2f\n', ...
+    par.alg.dual_auto_shrink, par.alg.dual_patience, par.alg.dual_shrink, par.alg.dual_min_scale);
 if isfield(par.alg,'feas_terminal_tol')
     fprintf('Feasible re-eval: terminal SOC tolerance (fixed profile) = %.3g\n', par.alg.feas_terminal_tol);
 end

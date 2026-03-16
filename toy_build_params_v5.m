@@ -75,7 +75,7 @@ par.P_mg_lease_charge_max    = 1.2;
 par.P_mg_lease_discharge_max = 1.2;
 
 % --- Algorithm settings ---
-par.alg.max_iter = 500;
+par.alg.max_iter = 1000;
 par.alg.tol_pri  = 5e-3;
 par.alg.tol_dual = 5e-2;
 par.alg.print_every = 5;
@@ -101,6 +101,12 @@ par.alg.dual_restart_ratio = 1.01;    % 残差轻微恶化即重启动量
 par.alg.dual_subgrad_clip = 1e6;      % 默认几乎不裁剪（接近原版）
 par.alg.dual_suffix_weighted = false; % 默认使用原版等权尾平均
 par.alg.dual_polyak_blend = 0.35;     % AdaGrad与Polyak步长混合系数 [0,1]
+par.alg.dual_decay_power = 0.25;      % 全局步长衰减幂次（抑制后期振荡）
+par.alg.dual_decay_warmup = 50;       % 衰减warmup轮次
+par.alg.dual_auto_shrink = true;      % r_avg停滞时自动缩步长
+par.alg.dual_patience = 30;           % 停滞判定窗口（仅burnin后）
+par.alg.dual_shrink = 0.7;            % 每次自动缩步长系数
+par.alg.dual_min_scale = 0.05;        % 自动缩步长最小全局比例
 par.alg.feas_terminal_tol = 3e-2; % 可行性回灌评估时，终端SOC容差（仅 fixed 评估使用）
 par.alg.feas_fixed_tol = 1e-3;    % 可行性回灌评估时，fixed交换功率匹配容差
 end
